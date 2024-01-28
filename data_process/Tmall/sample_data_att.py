@@ -9,8 +9,7 @@ if __name__ == '__main__':
     df = pd.read_csv(os.path.join(data_directory, 'user_log.csv'), header=None, skiprows=1)
     df.columns = ['user_id', 'item_id', 'cat_id', 'seller_id', 'brand_id', 'timestamp', 'action_type']
     # where 0 is for click, 1 is for add-to-cart, 2 is for purchase and 3 is for add-to-favourite.
-    
-    # 保留category, seller, brand
+   
     # df = df.drop(columns=['cat_id', 'seller_id', 'brand_id'])
     df.sort_values(['user_id', 'timestamp'], inplace=True)
     print("#users:{},#items:{},#category:{},#seller:{},#brand:{},#click:{},#cart:{},#favourite:{},#purchase:{}".format(
@@ -25,10 +24,8 @@ if __name__ == '__main__':
         len(df[df['action_type'] == 2]),
     ))
 
-    # 删除cart行为
     df = df.drop(df[df['action_type'].isin([1])].index)
     df.drop_duplicates(subset=['user_id', 'item_id', 'action_type'], keep='first', inplace=True)
-    # 删除双十一当天
     df = df[df['timestamp'] != 1111]
 
     print("#users:{},#items:{},#category:{},#seller:{},#brand:{},#click:{},#cart:{},#favourite:{},#purchase:{}".format(
@@ -142,7 +139,6 @@ if __name__ == '__main__':
     ))
     # original data: 0 is click, 1 is cart, 2 is purchase and 3 is favourite.
     # we reindex into: 0 is purchase, 1 is cart, 2 is favorite, 3 is view
-    # 先把验证集和测试集间的堆叠起来 过完id后再分开
     df_len = df.shape[0]
     df = pd.concat([df, df_between_val_test], axis=0)
 
