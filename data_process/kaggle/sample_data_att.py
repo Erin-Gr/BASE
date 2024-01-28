@@ -4,7 +4,6 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 np.set_printoptions(threshold=np.inf)
 
-
 if __name__ == '__main__':
     # for kaggle
     data_directory = 'data'
@@ -20,7 +19,6 @@ if __name__ == '__main__':
     
     df['timestamp'] = pd.to_datetime(df['event_time'])
     df['timestamp'] = df['timestamp'].astype(int) // 10**9
-    
     
     print("#users:{},#items:{},#category:{},#price:{},#brand:{},#view:{},#remove_from_cart:{},#cart:{},#purchase:{}".format(
         len(df['user_id'].unique()),
@@ -50,8 +48,6 @@ if __name__ == '__main__':
         len(df[df['action_type'] == 2]),
         len(df[df['action_type'] == 0]),
     ))
-    
-    
     
     # without price
     df = df.drop(columns=['event_time', 'event_type', 'category_code', 'user_session', 'price'])
@@ -86,11 +82,9 @@ if __name__ == '__main__':
         len(df[df['action_type'] == 0]),
     ))
     
-    # 删除remove_from_cart行为
     df = df.drop(df[df['action_type'].isin([1])].index)
     df.drop_duplicates(subset=['user_id', 'item_id', 'action_type'], keep='first', inplace=True)
     
-    # # 删除双十一当天
     # df = df[df['timestamp'] != 1111]
 
     print("#users:{},#items:{},#category:{},#brand:{},#view:{},#remove_from_cart:{},#cart:{},#purchase:{}".format(
@@ -103,10 +97,8 @@ if __name__ == '__main__':
         len(df[df['action_type'] == 2]),
         len(df[df['action_type'] == 0]),
     ))
-    
-    # 填补缺失值
+
     df = df.fillna('-1')
-    
     print(df.isnull().sum())
     print("#users:{},#items:{},#category:{},#brand:{},#view:{},#remove_from_cart:{},#cart:{},#purchase:{}".format(
         len(df['user_id'].unique()),
@@ -212,7 +204,6 @@ if __name__ == '__main__':
     ))
     # original data: 0 is click, 1 is cart, 2 is purchase and 3 is favourite.
     # we reindex into: 0 is purchase, 1 is cart, 2 is favorite, 3 is view
-    # 先把验证集和测试集间的堆叠起来 过完id后再分开
     df_len = df.shape[0]
     df = pd.concat([df, df_between_val_test], axis=0)
 
@@ -222,9 +213,6 @@ if __name__ == '__main__':
     print(df.columns)
     df = df.drop(columns=['idx', 'last_two_buy_idx', 'last_one_buy_idx', 'is_buy', 'last_two_buy_item', 'last_one_buy_item'])
     print(df.columns)
-
-    # 暂不处理价格
-    
 
     item_encoder = LabelEncoder()
     user_encoder = LabelEncoder()
