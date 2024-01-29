@@ -57,17 +57,6 @@ if __name__ == '__main__':
     df = df[['user_id', 'item_id', 'cat_id', 'brand_id', 'timestamp', 'action_type']]
     
     df.sort_values(['user_id', 'timestamp'], inplace=True)
-    # print("#users:{},#items:{},#category:{},#price:{},#brand:{},#view:{},#remove_from_cart:{},#cart:{},#purchase:{}".format(
-    #     len(df['user_id'].unique()),
-    #     len(df['item_id'].unique()),
-    #     len(df['cat_id'].unique()),
-    #     len(df['price_id'].unique()),
-    #     len(df['brand_id'].unique()),
-    #     len(df[df['action_type'] == 3]),
-    #     len(df[df['action_type'] == 1]),
-    #     len(df[df['action_type'] == 2]),
-    #     len(df[df['action_type'] == 0]),
-    # ))
     print("#users:{},#items:{},#category:{},#brand:{},#view:{},#remove_from_cart:{},#cart:{},#purchase:{}".format(
         len(df['user_id'].unique()),
         len(df['item_id'].unique()),
