@@ -52,9 +52,6 @@ if __name__ == '__main__':
     # without price
     df = df.drop(columns=['event_time', 'event_type', 'category_code', 'user_session', 'price'])
     
-    # # if without item attributes
-    # df = df.drop(columns=['category_id', 'brand', 'price'])
-    
     df.rename(columns={'product_id': 'item_id', 'category_id': 'cat_id', 'brand': 'brand_id'}, inplace=True)
     # swap columns
     df = df[['user_id', 'item_id', 'cat_id', 'brand_id', 'timestamp', 'action_type']]
@@ -84,8 +81,6 @@ if __name__ == '__main__':
     
     df = df.drop(df[df['action_type'].isin([1])].index)
     df.drop_duplicates(subset=['user_id', 'item_id', 'action_type'], keep='first', inplace=True)
-    
-    # df = df[df['timestamp'] != 1111]
 
     print("#users:{},#items:{},#category:{},#brand:{},#view:{},#remove_from_cart:{},#cart:{},#purchase:{}".format(
         len(df['user_id'].unique()),
