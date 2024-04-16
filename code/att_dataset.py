@@ -25,6 +25,7 @@ class Dataset(object):
                                      names=['user_id', 'item_id', 'cat_id', 'brand_id', 'timestamp', 'action_type'], 
                                      dtype={'user_id': np.int32, 'item_id': np.int32, 'cat_id': np.int32, 'brand_id': np.int32, 'timestamp': np.int32, 'action_type': np.int32})
 
+        
         if is_valid == 0:
             self.train = pd.concat([self.train, self.valid], axis='index')
             if self.data == '../data_process/Tmall/processed_data_att/Tmall':
