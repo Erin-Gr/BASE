@@ -232,31 +232,37 @@ class Model(object):
                 loc_embs_v *= self.view_mask
         
         if 'a' in self.ext_modules:
-            test_beha_emb = tf.tile(tf.reshape(self.beha_emb_mat[0], [1, 1, self.num_units]), [tf.shape(self.input_id)[0], self.maxlen, 1])  # [bs, L, d]
+            with tf.variable_scope("cat1_attention"):
+                loc_cat, self.attention_cat_lastq_ave, self.attention_cat_lastq_multi, self.attention_cat_batch_multi = self.multihead_attention_cat(query=target_beha_emb, inputs=inputs_cat, padding_mask=padding_mask, dropout_rate=args.dropout_rate)
+                loc_cat = self.layer_normalization(loc_cat)
+                loc_cat = self.feed_forward(loc_cat)
+                loc_cat *= padding_mask
+                loc_cat = self.layer_normalization(loc_cat)
             
-            loc_cat = self.dynamic_target_cat_attention(query=target_beha_emb, inputs=inputs_cat, dropout_rate=args.dropout_rate)
-            loc_cat *= padding_mask  # [bs, L, d]
-            loc_cat_test = self.dynamic_target_cat_attention(query=test_beha_emb, inputs=inputs_cat, dropout_rate=args.dropout_rate)
-            
-            if self.dataset == 'Tmall':
-                loc_seller = self.dynamic_target_seller_attention(query=target_beha_emb, inputs=inputs_seller, dropout_rate=args.dropout_rate)
-                loc_seller *= padding_mask  # [bs, L, d]
-                loc_seller_test = self.dynamic_target_seller_attention(query=test_beha_emb, inputs=inputs_seller, dropout_rate=args.dropout_rate)
-            
-            loc_brand = self.dynamic_target_brand_attention(query=target_beha_emb, inputs=inputs_brand, dropout_rate=args.dropout_rate)
-            loc_brand *= padding_mask  # [bs, L, d]
-            loc_brand_test = self.dynamic_target_brand_attention(query=test_beha_emb, inputs=inputs_brand, dropout_rate=args.dropout_rate)
+            if self.dataset == 'Tmall' or self.dataset == 'JD':
+                with tf.variable_scope("seller1_attention"):
+                    loc_seller,self.attention_seller_lastq_ave, self.attention_seller_lastq_multi, self.attention_seller_batch_multi = self.multihead_attention_bran(query=target_beha_emb, inputs=inputs_seller, padding_mask=padding_mask, dropout_rate=args.dropout_rate)
+                    loc_seller = self.layer_normalization(loc_seller)
+                    loc_seller = self.feed_forward(loc_seller)
+                    loc_seller *= padding_mask
+                    loc_seller = self.layer_normalization(loc_seller)
+            with tf.variable_scope("brand1_attention"):
+                loc_brand, self.attention_brand_lastq_ave, self.attention_brand_lastq_multi, self.attention_brand_batch_multi = self.multihead_attention_sell(query=target_beha_emb, inputs=inputs_brand, padding_mask=padding_mask, dropout_rate=args.dropout_rate)
+                loc_brand = self.layer_normalization(loc_brand)
+                loc_brand = self.feed_forward(loc_brand)
+                loc_brand *= padding_mask
+                loc_brand = self.layer_normalization(loc_brand)
                 
-            if self.dataset == 'Tmall':
-                loc_context = loc_cat + loc_seller + loc_brand
-                loc_context_test = loc_cat_test + loc_seller_test + loc_brand_test
-                loc_context = loc_context / 3.0
-                loc_context_test = loc_context_test / 3.0
+            if self.dataset == 'Tmall' or self.dataset == 'JD':
+                stac = tf.concat([loc_cat, loc_seller, loc_brand], axis=-1)
+                stac = tf.reshape(stac, [-1, self.maxlen, 3, self.num_units])
             else:
-                loc_context = loc_cat + loc_brand
-                loc_context_test = loc_cat_test + loc_brand_test
-                loc_context = loc_context / 2.0
-                loc_context_test = loc_context_test / 2.0
+                stac = tf.concat([loc_cat, loc_brand], axis=-1)
+                stac = tf.reshape(stac, [-1, self.maxlen, 2, self.num_units])
+                
+            loc_context = self.dynamic_att_attention(query=beha_embs, inputs=stac, dropout_rate=args.dropout_rate)
+            loc_context *= padding_mask
+            loc_context_test = tf.expand_dims(loc_context[:, -1, :], 1)
         
         # ==== hybrid/final respresentations ====
         positive_embs = tf.nn.embedding_lookup(self.item_emb_mat, self.pos_id)
@@ -678,48 +684,104 @@ class Model(object):
         tiled = tf.tile(expanded, multiples)
         return boolean_mask(tiled, mask)
     
-    def dynamic_target_cat_attention(self, query, inputs, dropout_rate=None):
+    def multihead_attention_cat(self, query, inputs, padding_mask=None,
+                            num_heads=1, dropout_rate=None, score='scaled_dot',
+                            causality=True, get_att='last_ave', residual=True):
         if dropout_rate is None:
             dropout_rate = self.dropout_rate
-        with tf.variable_scope("target_cat_attention", reuse=tf.AUTO_REUSE):
-            query = tf.reshape(query, [-1, self.maxlen, 1, self.num_units])
-            inputs = tf.reshape(inputs, [-1, self.maxlen, 1, self.num_units])
-            
-            Q = tf.layers.dense(query, self.num_units, activation=None) 
+        with tf.compat.v1.variable_scope("multihead_attention_cat"):
+            Q = tf.layers.dense(inputs, self.num_units, activation=None)
             K = tf.layers.dense(inputs, self.num_units, activation=None)
             V = tf.layers.dense(inputs, self.num_units, activation=None)
-            outputs = tf.matmul(Q, tf.transpose(K, [0, 1, 3, 2])) / (tf.to_float(tf.shape(K))[-1] ** 0.5)
+            Qh = tf.concat(tf.split(Q, num_heads, axis=2), axis=0)
+            Kh = tf.concat(tf.split(K, num_heads, axis=2), axis=0)
+            Vh = tf.concat(tf.split(V, num_heads, axis=2), axis=0)
+            outputs = tf.matmul(Qh, tf.transpose(Kh, [0, 2, 1])) / (tf.to_float(tf.shape(Kh))[-1] ** 0.5)
+            tril = tf.linalg.LinearOperatorLowerTriangular(tf.ones_like(outputs[0, :, :])).to_dense()
+            causality_mask = tf.tile(tf.expand_dims(tril, 0), [tf.shape(outputs)[0], 1, 1])
+            outputs = tf.where(tf.equal(causality_mask, 0), tf.ones_like(outputs) * (-2 ** 32 + 1), outputs)
+            key_mask = tf.transpose(tf.tile(padding_mask, [num_heads, 1, tf.shape(Q)[1]]), [0, 2, 1])
+            outputs = tf.where(tf.equal(key_mask, 0), tf.ones_like(outputs) * (-2 ** 32 + 1), outputs)
             outputs = tf.nn.softmax(outputs)
+            query_mask = tf.tile(padding_mask, [num_heads, 1, tf.shape(inputs)[1]])
+            outputs = outputs * query_mask
             outputs = tf.layers.dropout(outputs, rate=dropout_rate, training=tf.convert_to_tensor(self.is_training))
-            outputs = tf.matmul(outputs, V)
+            attention_lastq = tf.reduce_mean(tf.split(outputs[:, -1], num_heads, axis=0), axis=0)
+            attention_lastmulti = tf.split(outputs[:, -1], num_heads, axis=0)
+            attention_batchmulti = outputs
+            outputs = tf.matmul(outputs, Vh)
+            outputs = tf.concat(tf.split(outputs, num_heads, axis=0), axis=-1)
             outputs = tf.layers.dropout(outputs, rate=dropout_rate, training=tf.convert_to_tensor(self.is_training))
-            outputs = tf.reshape(outputs, [-1, self.maxlen, self.num_units])
-        return outputs
+        outputs += inputs
+        return outputs, attention_lastq, attention_lastmulti, attention_batchmulti
     
-    def dynamic_target_seller_attention(self, query, inputs, dropout_rate=None):
+    def multihead_attention_bran(self, query, inputs, padding_mask=None,
+                            num_heads=1, dropout_rate=None, score='scaled_dot',
+                            causality=True, get_att='last_ave', residual=True):
         if dropout_rate is None:
             dropout_rate = self.dropout_rate
-        with tf.variable_scope("target_seller_attention", reuse=tf.AUTO_REUSE):
-            query = tf.reshape(query, [-1, self.maxlen, 1, self.num_units])
-            inputs = tf.reshape(inputs, [-1, self.maxlen, 1, self.num_units])
-            
-            Q = tf.layers.dense(query, self.num_units, activation=None) 
+        with tf.compat.v1.variable_scope("multihead_attention_bran"):
+            Q = tf.layers.dense(inputs, self.num_units, activation=None)
             K = tf.layers.dense(inputs, self.num_units, activation=None)
             V = tf.layers.dense(inputs, self.num_units, activation=None)
-            outputs = tf.matmul(Q, tf.transpose(K, [0, 1, 3, 2])) / (tf.to_float(tf.shape(K))[-1] ** 0.5)
+            Qh = tf.concat(tf.split(Q, num_heads, axis=2), axis=0)
+            Kh = tf.concat(tf.split(K, num_heads, axis=2), axis=0)
+            Vh = tf.concat(tf.split(V, num_heads, axis=2), axis=0)
+            outputs = tf.matmul(Qh, tf.transpose(Kh, [0, 2, 1])) / (tf.to_float(tf.shape(Kh))[-1] ** 0.5)
+            tril = tf.linalg.LinearOperatorLowerTriangular(tf.ones_like(outputs[0, :, :])).to_dense()
+            causality_mask = tf.tile(tf.expand_dims(tril, 0), [tf.shape(outputs)[0], 1, 1])
+            outputs = tf.where(tf.equal(causality_mask, 0), tf.ones_like(outputs) * (-2 ** 32 + 1), outputs)
+            key_mask = tf.transpose(tf.tile(padding_mask, [num_heads, 1, tf.shape(Q)[1]]), [0, 2, 1])
+            outputs = tf.where(tf.equal(key_mask, 0), tf.ones_like(outputs) * (-2 ** 32 + 1), outputs)
             outputs = tf.nn.softmax(outputs)
+            query_mask = tf.tile(padding_mask, [num_heads, 1, tf.shape(inputs)[1]])
+            outputs = outputs * query_mask
             outputs = tf.layers.dropout(outputs, rate=dropout_rate, training=tf.convert_to_tensor(self.is_training))
-            outputs = tf.matmul(outputs, V)
+            attention_lastq = tf.reduce_mean(tf.split(outputs[:, -1], num_heads, axis=0), axis=0)
+            attention_lastmulti = tf.split(outputs[:, -1], num_heads, axis=0)
+            attention_batchmulti = outputs
+            outputs = tf.matmul(outputs, Vh)
+            outputs = tf.concat(tf.split(outputs, num_heads, axis=0), axis=-1)
             outputs = tf.layers.dropout(outputs, rate=dropout_rate, training=tf.convert_to_tensor(self.is_training))
-            outputs = tf.reshape(outputs, [-1, self.maxlen, self.num_units])
-        return outputs
+        outputs += inputs
+        return outputs, attention_lastq, attention_lastmulti, attention_batchmulti
     
-    def dynamic_target_brand_attention(self, query, inputs, dropout_rate=None):
+    def multihead_attention_sell(self, query, inputs, padding_mask=None,
+                            num_heads=1, dropout_rate=None, score='scaled_dot',
+                            causality=True, get_att='last_ave', residual=True):
         if dropout_rate is None:
             dropout_rate = self.dropout_rate
-        with tf.variable_scope("target_brand_attention", reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope("multihead_attention_sell"):
+            Q = tf.layers.dense(inputs, self.num_units, activation=None)
+            K = tf.layers.dense(inputs, self.num_units, activation=None)
+            V = tf.layers.dense(inputs, self.num_units, activation=None)
+            Qh = tf.concat(tf.split(Q, num_heads, axis=2), axis=0)
+            Kh = tf.concat(tf.split(K, num_heads, axis=2), axis=0)
+            Vh = tf.concat(tf.split(V, num_heads, axis=2), axis=0)
+            outputs = tf.matmul(Qh, tf.transpose(Kh, [0, 2, 1])) / (tf.to_float(tf.shape(Kh))[-1] ** 0.5)
+            tril = tf.linalg.LinearOperatorLowerTriangular(tf.ones_like(outputs[0, :, :])).to_dense()
+            causality_mask = tf.tile(tf.expand_dims(tril, 0), [tf.shape(outputs)[0], 1, 1])
+            outputs = tf.where(tf.equal(causality_mask, 0), tf.ones_like(outputs) * (-2 ** 32 + 1), outputs)
+            key_mask = tf.transpose(tf.tile(padding_mask, [num_heads, 1, tf.shape(Q)[1]]), [0, 2, 1])
+            outputs = tf.where(tf.equal(key_mask, 0), tf.ones_like(outputs) * (-2 ** 32 + 1), outputs)
+            outputs = tf.nn.softmax(outputs)
+            query_mask = tf.tile(padding_mask, [num_heads, 1, tf.shape(inputs)[1]])
+            outputs = outputs * query_mask
+            outputs = tf.layers.dropout(outputs, rate=dropout_rate, training=tf.convert_to_tensor(self.is_training))
+            attention_lastq = tf.reduce_mean(tf.split(outputs[:, -1], num_heads, axis=0), axis=0)
+            attention_lastmulti = tf.split(outputs[:, -1], num_heads, axis=0)
+            attention_batchmulti = outputs
+            outputs = tf.matmul(outputs, Vh)
+            outputs = tf.concat(tf.split(outputs, num_heads, axis=0), axis=-1)
+            outputs = tf.layers.dropout(outputs, rate=dropout_rate, training=tf.convert_to_tensor(self.is_training))
+        outputs += inputs
+        return outputs, attention_lastq, attention_lastmulti, attention_batchmulti
+    
+    def dynamic_att_attention(self, query, inputs, dropout_rate=None):
+        if dropout_rate is None:
+            dropout_rate = self.dropout_rate
+        with tf.variable_scope("att_attention", reuse=tf.AUTO_REUSE):
             query = tf.reshape(query, [-1, self.maxlen, 1, self.num_units])
-            inputs = tf.reshape(inputs, [-1, self.maxlen, 1, self.num_units])
             Q = tf.layers.dense(query, self.num_units, activation=None)
             K = tf.layers.dense(inputs, self.num_units, activation=None)
             V = tf.layers.dense(inputs, self.num_units, activation=None)
