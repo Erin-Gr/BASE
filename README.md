@@ -12,42 +12,36 @@ Our code is based on the following packages:
    - numpy 1.17.3
 
 
-
 # Code Structure
 ```
 |--data_process
    |--Tmall
-      sample_data.py                        # data preprocessing scripts
-      |--data
-         |--user_log.csv                 # raw data of Tmall
-      |--processed_data          
-         |--Tmall_train.csv                 # training data of Tmall        
-         |--Tmall_valid.csv                 # valid data of Tmall    
-         |--Tmall_between_val_test.csv      # interactions data between the valid item and test item
-         |--Tmall_test.csv                  # test data of Tmall    
-         |--Tmall_negative.csv              # candidate data of Tmall    
-|--NextIP                    
-   |--dataset.py                            # data loader
-   |--nextip.py                             # model file of our NextIP
-   |--evaluate.py                           # evaluation
-   |--train.py                               # run file
-|--tmall_log.txt                            # the running log of NextIP on the Tmall dataset
+      |--processed_data_att.zip               # experimented dataset
+      |--sample_data_att.py                   # data preprocessing scripts
+   |--Cosmetics          
+      |--processed_data_att.zip               # experimented dataset
+      |--sample_data_att.py                   # data preprocessing scripts   
+|--code                    
+   |--attMBSASRec.py                          # main model file of our BASE
+   |--att_dataset.py                          # data loader
+   |--bslayer.py                              # model sub-module file of our BASE
+   |--bsmmoe.py                               # model sub-module file of our BASE
+   |--evaluate.py                             # evaluation
+   |--train.py                                # run file
+|--README.md                                  # readme file
 ```
 
 
-## Usage
-
+# Usage
 1. Download the datasets and put the files in `../data_process/xx/data/`.
-
 2. Run the data preprocessing scripts to generate the data.
 ``` 
 cd data_process/Tmall
 python3 sample_data.py 
 ```
-
 3. Run the train.py
 ``` 
-cd NextIP
+cd code
 CUDA_VISIBLE_DEVICES=0 python3 train.py 
 ```
 
@@ -68,3 +62,4 @@ More descriptions of the command arguments are as follws:
 | l2_reg              | float | 0.0           | regularization hyperparameter.                                      |
 | eva_interval        | int   | 1             | Number of epoch interval for evaluation.                            |
 | wo                  | str   |               | Ablation of behavior-specific item sequence.                        |                              |
+![image](https://github.com/user-attachments/assets/180c09c8-5122-4ad4-970f-2435b7a059c0)
