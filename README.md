@@ -22,7 +22,7 @@ Our code is based on the following packages:
       |--processed_data_att.zip               # experimented dataset (Cosmetics)
       |--sample_data_att.py                   # data preprocessing scripts
    |--JD          
-      |--processed_data_att.zip               # experimented dataset (Cosmetics)
+      |--processed_data_att.zip               # experimented dataset (JD)
       |--sample_data_att.py                   # data preprocessing scripts   
 |--code                    
    |--attMBSASRec.py                          # main model file of our BASE
