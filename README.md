@@ -20,6 +20,9 @@ Our code is based on the following packages:
       |--sample_data_att.py                   # data preprocessing scripts
    |--kaggle          
       |--processed_data_att.zip               # experimented dataset (Cosmetics)
+      |--sample_data_att.py                   # data preprocessing scripts
+   |--JD          
+      |--processed_data_att.zip               # experimented dataset (Cosmetics)
       |--sample_data_att.py                   # data preprocessing scripts   
 |--code                    
    |--attMBSASRec.py                          # main model file of our BASE
