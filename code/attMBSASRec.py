@@ -400,7 +400,7 @@ class Model(object):
         self.candidate_id = tf.placeholder(tf.int32, shape=(None, self.num_item))
         candidate_embs = tf.nn.embedding_lookup(self.item_emb_mat, self.candidate_id)
         self.cand_rating = tf.reduce_sum(outputs_te * candidate_embs, -1)
-        self.cand_rating = tf.nn.softmax(self.cand_rating)
+        # self.cand_rating = tf.nn.softmax(self.cand_rating)
         # ==== optimizer ====
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
         self.optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=args.lr, beta2=0.98)
