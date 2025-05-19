@@ -1,5 +1,5 @@
 # BASE
-A solution for attribute-aware multi-behavior sequential recommendation.
+A solution for attribute-aware multi-behavior sequential recommendation (A-MBSR).
 
 
 # Environment
