@@ -9,6 +9,7 @@ from loguru import logger
 import sys
 from attMBSASRec import Model
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Configurations.")
     # parser.add_argument('--path', type=str, default='../data_process/kaggle/processed_data_att/', help='Path of data files.')   # 3种行为：purchase, view, cart
