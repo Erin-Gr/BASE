@@ -1,7 +1,7 @@
 # BASE
 A solution for attribute-aware multi-behavior sequential recommendation (A-MBSR).
 
-
+ 
 # Environment
 Our code is based on the following packages:
 - GPU: Tesla V100-PCIE-16GB
