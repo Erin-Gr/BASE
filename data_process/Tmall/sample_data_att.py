@@ -5,6 +5,7 @@ from sklearn.preprocessing import LabelEncoder
 np.set_printoptions(threshold=np.inf)
 
 
+
 if __name__ == '__main__':
     data_directory = 'data'
     df = pd.read_csv(os.path.join(data_directory, 'user_log.csv'), header=None, skiprows=1)
