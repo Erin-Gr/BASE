@@ -4,6 +4,7 @@ from tensorflow.keras.layers import Dense
 import tensorflow.keras.backend as K
 from loguru import logger
 
+
 class mmoe_layer(Layer):
     def __init__(self, hidden_units, num_expert_sh, num_expert_sp, num_tasks, behavior_id,
                  dropout_rate, l2_reg, is_training, use_expert_bias=True, use_gate_bias=True, **kwargs):
