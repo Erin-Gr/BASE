@@ -5,6 +5,7 @@ from sklearn.preprocessing import LabelEncoder
 np.set_printoptions(threshold=np.inf)
 
 
+
 if __name__ == '__main__':
     # for 2019JDATA
     data_directory = 'data'
