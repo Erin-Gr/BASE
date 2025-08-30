@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
-
 import numpy as np
 import math
 import multiprocessing
 import time
+
 
 def evaluate_rec_ndcg_mrr(ratings, top_k=10, row_target_position=0):
     ratings = np.array(ratings)
@@ -91,3 +91,4 @@ def evaluate_rec_ndcg_mrr_grouped(ratings, seq_length,
         mrrs.append(mrr)
 
     return recs, ndcgs, mrrs
+
