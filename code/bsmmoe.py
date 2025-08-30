@@ -2,6 +2,7 @@ from bslayer import mmoe_layer, tower_layer
 import tensorflow as tf
 from tensorflow.keras import Model
 
+
 class TBRE(Model):
     def __init__(self, maxlen, mmoe_hidden_units, num_experts_sh, num_experts_sp, num_tasks,
                  tower_hidden_units, output_dim, behavior_id, dropout_rate, l2_reg, is_training, activation='relu',
