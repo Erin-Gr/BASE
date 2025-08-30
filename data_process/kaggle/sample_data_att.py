@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 np.set_printoptions(threshold=np.inf)
 
+
 if __name__ == '__main__':
     # for kaggle
     data_directory = 'data'
