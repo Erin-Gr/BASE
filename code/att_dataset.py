@@ -6,6 +6,7 @@ import multiprocessing
 import time
 from collections import defaultdict
 from loguru import logger
+
 class Dataset(object):
     def __init__(self, file_prefix, is_valid=1):
         self.data = file_prefix
