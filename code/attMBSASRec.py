@@ -5,7 +5,7 @@ from tensorflow.python.ops.array_ops import _all_dimensions
 import tensorflow as tf
 from bsmmoe import TBRE
 from tensorflow.keras.layers import Dense
-
+ 
 class Model(object):
     def __init__(self, num_user, num_item, num_cat, num_seller, num_brand, args):
         # ==== some configurations ====
